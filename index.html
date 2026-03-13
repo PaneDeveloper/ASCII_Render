@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII Gen V6.5 - 30k Particle Madness</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <title>ASCII Gen V6.5 - GitHub Source</title>
     <style>
         :root {
             --green: #00ff41;
@@ -133,10 +132,18 @@
 
     <div id="gallery-modal">
         <div style="display:flex; justify-content:space-between; align-items:center">
-            <h2 style="margin:0">SERVIDOR NODE.JS: ./Arquivos_Render</h2>
+            <h2 style="margin:0">REPOSITÓRIO: ./Arquivos_Render</h2>
             <button class="btn" onclick="toggleGallery(false)" style="color:var(--danger); border-color:var(--danger)">FECHAR [X]</button>
         </div>
-        <div class="gallery-grid" id="gallery-list"></div>
+        <div class="gallery-grid" id="gallery-list">
+            <!-- Arquivos estáticos do GitHub já configurados -->
+            <div class="file-card" onclick="loadFile('Arquivos_Render/video1.mp4', true, 'VIDEO 01')">
+                <div style="font-size:30px">🎞️</div><div style="font-size:9px">video1.mp4</div>
+            </div>
+            <div class="file-card" onclick="loadFile('Arquivos_Render/video2.mp4', true, 'VIDEO 02')">
+                <div style="font-size:30px">🎞️</div><div style="font-size:9px">video2.mp4</div>
+            </div>
+        </div>
     </div>
 
     <div class="viewport">
@@ -152,7 +159,7 @@
     </div>
 
     <div class="sidebar">
-        <div id="status" style="font-size:10px; text-align:center; border:1px solid #444; padding:5px; cursor:pointer">CLIQUE PARA CONECTAR</div>
+        <div id="status" style="font-size:10px; text-align:center; border:1px solid var(--blue); padding:5px; color: var(--blue)">MODO: GITHUB PAGES (ESTÁTICO)</div>
         
         <div class="grid-2">
             <button class="btn" onclick="document.getElementById('local-file').click()">📂 LOCAL</button>
@@ -160,7 +167,7 @@
         </div>
         <input type="file" id="local-file" hidden accept="video/*,image/*">
 
-        <button class="btn" id="btn-gallery" style="color:var(--blue); border-color:var(--blue)">🖼️ EXPLORAR SERVIDOR</button>
+        <button class="btn" id="btn-gallery" style="color:var(--blue); border-color:var(--blue)">🖼️ EXPLORAR REPOSITÓRIO</button>
         <button class="btn" id="btn-screen" style="color:var(--blue); border-color:var(--blue)">🖥️ CAPTURAR TELA</button>
 
         <button class="btn btn-start" id="btn-init">▶ INICIAR ENGINE</button>
@@ -175,14 +182,13 @@
                 </div>
             </div>
             <input type="range" id="video-progress" value="0" step="0.1" style="width:100%">
-            <!-- Elemento de volume que estava faltando ou com erro de acesso -->
             <div class="control-group">
                 <label>VOLUME <span class="stat-val" id="val-vol">80%</span></label>
                 <input type="range" id="vol-control" min="0" max="1" step="0.01" value="0.8">
             </div>
         </div>
 
-        <button class="btn btn-active" id="btn-particles" style="border-color:var(--purple); color:var(--purple); background: var(--purple); color: black;">✨ PARTÍCULAS: 30.000 MAX</button>
+        <button class="btn btn-active" id="btn-particles" style="border-color:var(--purple); background: var(--purple); color: black;">✨ PARTÍCULAS: 30.000 MAX</button>
 
         <div class="control-group">
             <label>ESTILO RENDER <span class="stat-val" id="val-style">CLASSIC</span></label>
@@ -224,7 +230,6 @@
             <button class="btn" id="btn-rec" style="border-color:var(--danger); color:var(--danger)">⏺ GRAVAR</button>
             <button class="btn" id="btn-snap">📸 SNAP</button>
         </div>
-        <div id="ping-stats" style="font-size:9px; color:var(--blue); text-align:center">SERVER NODE PING: -- ms</div>
         <div id="particle-count" style="font-size:9px; color:var(--purple); text-align:center">PARTÍCULAS ATIVAS: 0</div>
     </div>
 
@@ -232,8 +237,8 @@
 
 <script>
 /**
- * JONATHAN ASCII ENGINE V6.5 - FIXED & STABLE
- * 30.000 partículas. Sem erros. Apenas performance.
+ * JONATHAN ASCII ENGINE V6.5 - GITHUB STATIC VERSION
+ * Focado em performance e carregamento via repositório.
  */
 
 const v = document.getElementById('v-core');
@@ -245,7 +250,7 @@ const bCtx = buf.getContext('2d', { willReadFrequently: true });
 
 let audioCtx, audioSource, audioGain, audioDest, isMuted = false;
 let isRunning = false, isFlipped = false, isInverted = false, currentMode = 'idle';
-let socket, recorder, chunks = [];
+let recorder, chunks = [];
 let particlesEnabled = true;
 
 // --- ENGINE DE ALTA PERFORMANCE PARA 30.000 PARTÍCULAS ---
@@ -255,20 +260,16 @@ let activeParticles = 0;
 
 function spawnParticle(x, y, r, g, b) {
     if (activeParticles >= MAX_PARTICLES) return;
-    
     let idx = activeParticles * 7;
     particles[idx] = x;
     particles[idx + 1] = y;
-    
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 5 + 1;
     particles[idx + 2] = Math.cos(angle) * speed; 
     particles[idx + 3] = Math.sin(angle) * speed - 2; 
-    
     particles[idx + 4] = 1.0; 
     particles[idx + 5] = r; 
     particles[idx + 6] = g; 
-    
     activeParticles++;
 }
 
@@ -309,7 +310,6 @@ const MAPS = {
     hires: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
 };
 
-// Segurança nos seletores para evitar TypeError
 const btnParticles = document.getElementById('btn-particles');
 if(btnParticles) {
     btnParticles.onclick = (e) => {
@@ -446,34 +446,6 @@ document.getElementById('btn-screen').onclick = async () => {
     } catch (e) { console.error(e); }
 };
 
-function initSocket() {
-    try {
-        socket = io('http://localhost:3000');
-        socket.on('connect', () => {
-            const statusElem = document.getElementById('status');
-            if(statusElem) {
-                statusElem.innerText = "SERVIDOR NODE.JS ONLINE";
-                statusElem.style.color = "var(--green)";
-            }
-            socket.emit('request-files');
-        });
-
-        socket.on('file-list', (files) => {
-            const list = document.getElementById('gallery-list');
-            if(!list) return;
-            list.innerHTML = "";
-            files.forEach(file => {
-                const isVideo = file.match(/\.(mp4|webm|mov)$/i);
-                const card = document.createElement('div');
-                card.className = 'file-card';
-                card.innerHTML = `<div style="font-size:30px">${isVideo ? '🎞️' : '🖼️'}</div><div style="font-size:9px">${file}</div>`;
-                card.onclick = () => loadFile(`http://localhost:3000/Arquivos_Render/${file}`, isVideo, file);
-                list.appendChild(card);
-            });
-        });
-    } catch(e) { console.warn("Socket connection failed."); }
-}
-
 function loadFile(url, isVideo, name) {
     document.getElementById('file-info').innerText = name.toUpperCase();
     v.srcObject = null;
@@ -491,7 +463,7 @@ function toggleGallery(show) {
     const modal = document.getElementById('gallery-modal');
     if(modal) modal.style.display = show ? 'flex' : 'none'; 
 }
-document.getElementById('btn-gallery').onclick = () => { toggleGallery(true); if(socket) socket.emit('request-files'); };
+document.getElementById('btn-gallery').onclick = () => toggleGallery(true);
 
 document.getElementById('local-file').onchange = (e) => {
     const file = e.target.files[0];
@@ -546,7 +518,6 @@ document.getElementById('btn-snap').onclick = () => {
     const a = document.createElement('a'); a.href = out.toDataURL(); a.download = 'ascii_snap.png'; a.click();
 };
 
-initSocket();
 </script>
 </body>
 </html>
