@@ -1,523 +1,118 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII Gen V6.5 - GitHub Source</title>
-    <style>
-        :root {
-            --green: #00ff41;
-            --bg: #050505;
-            --panel: #111;
-            --danger: #ff3e3e;
-            --blue: #00a2ff;
-            --gold: #ffca28;
-            --purple: #b100ff;
-        }
-
-        body {
-            background-color: var(--bg);
-            color: var(--green);
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
-
-        .viewport {
-            display: flex;
-            flex: 1;
-            padding: 15px;
-            gap: 15px;
-        }
-
-        .pane {
-            flex: 1;
-            background: #000;
-            border: 2px solid #222;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,1);
-        }
-
-        .pane label {
-            position: absolute;
-            top: 10px; left: 10px;
-            font-size: 10px;
-            background: rgba(0,0,0,0.8);
-            padding: 4px 8px;
-            border: 1px solid var(--green);
-            z-index: 10;
-        }
-
-        video, img, canvas {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .sidebar {
-            width: 350px;
-            background: var(--panel);
-            padding: 20px;
-            border-left: 2px solid #222;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            overflow-y: auto;
-            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-        }
-
-        .btn {
-            background: #111;
-            border: 1px solid var(--green);
-            color: var(--green);
-            padding: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 11px;
-            text-transform: uppercase;
-            transition: 0.2s;
-        }
-
-        .btn:hover:not(:disabled) { background: var(--green); color: #000; }
-        .btn-active { background: var(--green); color: #000; }
-        .btn-start { background: #002b07; border-width: 2px; height: 45px; }
-        .btn-rec-active { background: var(--danger) !important; color: white !important; animation: blink 1s infinite; }
-
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        #gallery-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 1000;
-            flex-direction: column;
-            padding: 40px;
-            backdrop-filter: blur(5px);
-        }
-
-        .gallery-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 15px; margin-top: 20px; overflow-y: auto;
-        }
-
-        .file-card {
-            border: 1px solid #333; padding: 15px; text-align: center;
-            cursor: pointer; transition: 0.3s;
-        }
-
-        .file-card:hover { border-color: var(--green); background: rgba(0,255,0,0.1); }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .control-group { display: flex; flex-direction: column; gap: 4px; }
-        label { font-size: 9px; color: #777; font-weight: bold; text-transform: uppercase; }
-        .stat-val { float: right; color: var(--green); }
-
-        .media-deck {
-            border: 1px solid var(--green); padding: 10px;
-            background: rgba(0, 255, 65, 0.05);
-            display: flex; flex-direction: column; gap: 8px;
-        }
-
-        #buffer { display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASCII Gen V5.5 - TV Projects Hybrid</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+:root{--green:#00ff41;--bg:#050505;--panel:#111;--danger:#ff3e3e;--blue:#00a2ff;--warning:#ffcc00}
+body{background:var(--bg);color:var(--green);font-family:Courier New,monospace;margin:0;display:flex;height:100vh;overflow:hidden;user-select:none}
+.viewport{display:flex;flex:1;padding:15px;gap:15px}
+.pane{flex:1;background:black;border:2px solid #222;display:flex;justify-content:center;align-items:center;position:relative}
+.pane label{position:absolute;top:10px;left:10px;font-size:10px;border:1px solid var(--green);padding:4px 8px;background:black}
+.media-layer{display:none;width:100%;height:100%;justify-content:center;align-items:center}
+canvas{max-width:100%;max-height:100%;image-rendering:pixelated}
+.placeholder{color:#222;font-size:24px;font-weight:bold}
+.sidebar{width:360px;background:var(--panel);padding:20px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.btn{background:#111;border:1px solid var(--green);color:var(--green);padding:8px;cursor:pointer;font-size:11px}
+.btn:hover{background:var(--green);color:black}
+.control-group{display:flex;flex-direction:column;gap:3px}
+label{font-size:9px;color:#777}
+.stat-val{float:right;color:var(--green)}
+</style>
 </head>
-<body>
-
-    <div id="gallery-modal">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-            <h2 style="margin:0">REPOSITÓRIO: ./Arquivos_Render</h2>
-            <button class="btn" onclick="toggleGallery(false)" style="color:var(--danger); border-color:var(--danger)">FECHAR [X]</button>
-        </div>
-        <div class="gallery-grid" id="gallery-list">
-            <!-- Arquivos estáticos do GitHub já configurados -->
-            <div class="file-card" onclick="loadFile('Arquivos_Render/video1.mp4', true, 'VIDEO 01')">
-                <div style="font-size:30px">🎞️</div><div style="font-size:9px">video1.mp4</div>
-            </div>
-            <div class="file-card" onclick="loadFile('Arquivos_Render/video2.mp4', true, 'VIDEO 02')">
-                <div style="font-size:30px">🎞️</div><div style="font-size:9px">video2.mp4</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="viewport">
-        <div class="pane">
-            <label>FONTE ORIGINAL</label>
-            <video id="v-core" playsinline crossorigin="anonymous"></video>
-            <img id="img-core" style="display:none">
-        </div>
-        <div class="pane">
-            <label>CANVAS ASCII & ENGINE (MAX PARTICLES)</label>
-            <canvas id="canvas-core"></canvas>
-        </div>
-    </div>
-
-    <div class="sidebar">
-        <div id="status" style="font-size:10px; text-align:center; border:1px solid var(--blue); padding:5px; color: var(--blue)">MODO: GITHUB PAGES (ESTÁTICO)</div>
-        
-        <div class="grid-2">
-            <button class="btn" onclick="document.getElementById('local-file').click()">📂 LOCAL</button>
-            <button class="btn" id="btn-gh" style="color:var(--gold); border-color:var(--gold)">☁️ GITHUB</button>
-        </div>
-        <input type="file" id="local-file" hidden accept="video/*,image/*">
-
-        <button class="btn" id="btn-gallery" style="color:var(--blue); border-color:var(--blue)">🖼️ EXPLORAR REPOSITÓRIO</button>
-        <button class="btn" id="btn-screen" style="color:var(--blue); border-color:var(--blue)">🖥️ CAPTURAR TELA</button>
-
-        <button class="btn btn-start" id="btn-init">▶ INICIAR ENGINE</button>
-
-        <div class="media-deck">
-            <div id="file-info" style="font-size:10px; white-space:nowrap; overflow:hidden">NENHUM ARQUIVO</div>
-            <div style="display:flex; justify-content:space-between; align-items:center">
-                <span id="time-display" style="font-size:10px">00:00 / 00:00</span>
-                <div style="display:flex; gap:5px">
-                    <button class="btn" id="btn-mute" style="padding:4px 8px">🔊</button>
-                    <button class="btn" id="btn-play-pause" style="padding:4px 8px">PLAY</button>
-                </div>
-            </div>
-            <input type="range" id="video-progress" value="0" step="0.1" style="width:100%">
-            <div class="control-group">
-                <label>VOLUME <span class="stat-val" id="val-vol">80%</span></label>
-                <input type="range" id="vol-control" min="0" max="1" step="0.01" value="0.8">
-            </div>
-        </div>
-
-        <button class="btn btn-active" id="btn-particles" style="border-color:var(--purple); background: var(--purple); color: black;">✨ PARTÍCULAS: 30.000 MAX</button>
-
-        <div class="control-group">
-            <label>ESTILO RENDER <span class="stat-val" id="val-style">CLASSIC</span></label>
-            <select id="c-style" class="btn">
-                <option value="classic">ASCII Clássico</option>
-                <option value="blocks">Blocos Densos</option>
-                <option value="hires">High Resolution</option>
-            </select>
-        </div>
-
-        <div class="grid-2">
-            <div class="control-group">
-                <label>RESOLUÇÃO <span class="stat-val" id="val-res">120</span></label>
-                <input type="range" id="c-res" min="50" max="350" value="120">
-            </div>
-            <div class="control-group">
-                <label>FPS <span class="stat-val" id="val-fps">30</span></label>
-                <input type="range" id="c-fps" min="10" max="60" value="30">
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <button class="btn" id="btn-flip">↔ FLIP</button>
-            <button class="btn" id="btn-invert">🌗 INVERTER</button>
-        </div>
-
-        <div class="grid-2">
-            <div class="control-group">
-                <label>BRILHO</label>
-                <input type="range" id="c-br" min="0.5" max="2.5" step="0.1" value="1.0">
-            </div>
-            <div class="control-group">
-                <label>CONTRASTE</label>
-                <input type="range" id="c-con" min="0.5" max="2.5" step="0.1" value="1.0">
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <button class="btn" id="btn-rec" style="border-color:var(--danger); color:var(--danger)">⏺ GRAVAR</button>
-            <button class="btn" id="btn-snap">📸 SNAP</button>
-        </div>
-        <div id="particle-count" style="font-size:9px; color:var(--purple); text-align:center">PARTÍCULAS ATIVAS: 0</div>
-    </div>
-
-    <canvas id="buffer"></canvas>
-
+<body onmousedown="unlockAudio()" ontouchstart="unlockAudio()">
+<div class="viewport">
+<div class="pane">
+<label>FONTE</label>
+<div class="media-layer" id="src-layer">
+<video id="v-core" playsinline loop muted></video>
+<img id="img-core">
+</div>
+<div class="placeholder">OFFLINE</div>
+</div>
+<div class="pane">
+<label>RENDER</label>
+<div class="media-layer">
+<canvas id="canvas-core"></canvas>
+</div>
+<div class="placeholder">PAUSADO</div>
+</div>
+</div>
+<div class="sidebar">
+<div id="audio-status">⚠️ ÁUDIO BLOQUEADO</div>
+<button class="btn" onclick="document.getElementById('f-selector').click()">Carregar Arquivo</button>
+<input type="file" id="f-selector" accept="video/*,image/*" style="display:none">
+<button class="btn" id="btn-init" disabled>▶ Iniciar</button>
+<div class="control-group">
+<label>Resolução <span class="stat-val" id="s-rs">100</span></label>
+<input type="range" id="c-rs" min="30" max="300" value="100">
+</div>
+<div class="control-group">
+<label>FPS <span class="stat-val" id="s-fps">30</span></label>
+<input type="range" id="c-fps" min="10" max="60" value="30">
+</div>
+</div>
+<canvas id="buffer"></canvas>
 <script>
-/**
- * JONATHAN ASCII ENGINE V6.5 - GITHUB STATIC VERSION
- * Focado em performance e carregamento via repositório.
- */
-
-const v = document.getElementById('v-core');
-const img = document.getElementById('img-core');
-const out = document.getElementById('canvas-core');
-const oCtx = out.getContext('2d');
-const buf = document.getElementById('buffer');
-const bCtx = buf.getContext('2d', { willReadFrequently: true });
-
-let audioCtx, audioSource, audioGain, audioDest, isMuted = false;
-let isRunning = false, isFlipped = false, isInverted = false, currentMode = 'idle';
-let recorder, chunks = [];
-let particlesEnabled = true;
-
-// --- ENGINE DE ALTA PERFORMANCE PARA 30.000 PARTÍCULAS ---
-const MAX_PARTICLES = 30000;
-let particles = new Float32Array(MAX_PARTICLES * 7); 
-let activeParticles = 0;
-
-function spawnParticle(x, y, r, g, b) {
-    if (activeParticles >= MAX_PARTICLES) return;
-    let idx = activeParticles * 7;
-    particles[idx] = x;
-    particles[idx + 1] = y;
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 5 + 1;
-    particles[idx + 2] = Math.cos(angle) * speed; 
-    particles[idx + 3] = Math.sin(angle) * speed - 2; 
-    particles[idx + 4] = 1.0; 
-    particles[idx + 5] = r; 
-    particles[idx + 6] = g; 
-    activeParticles++;
+const v=document.getElementById("v-core")
+const img=document.getElementById("img-core")
+const out=document.getElementById("canvas-core")
+const oCtx=out.getContext("2d",{alpha:false})
+const buf=document.getElementById("buffer")
+const bCtx=buf.getContext("2d",{willReadFrequently:true})
+let audioCtx
+let audioGain
+let audioSource
+let isRunning=false
+let currentMode="idle"
+const MAP="$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
+let lookup=new Array(256)
+function unlockAudio(){
+if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();audioGain=audioCtx.createGain();audioGain.connect(audioCtx.destination)}
+if(audioCtx.state==="suspended"){audioCtx.resume()}
+document.getElementById("audio-status").innerText="🔊 ÁUDIO ATIVO"
 }
-
-function updateParticles() {
-    for (let i = 0; i < activeParticles; i++) {
-        let idx = i * 7;
-        particles[idx] += particles[idx + 2]; 
-        particles[idx + 1] += particles[idx + 3]; 
-        particles[idx + 3] += 0.2; 
-        particles[idx + 4] -= (Math.random() * 0.04 + 0.01); 
-
-        if (particles[idx + 4] <= 0) {
-            let lastIdx = (activeParticles - 1) * 7;
-            for (let j = 0; j < 7; j++) {
-                particles[idx + j] = particles[lastIdx + j];
-            }
-            activeParticles--;
-            i--; 
-        }
-    }
+function buildLookup(){for(let i=0;i<256;i++){lookup[i]=MAP[Math.floor((i/256)*MAP.length)]}}
+function draw(){const src=currentMode==="video"?v:img;if(!src.videoWidth&&!src.naturalWidth)return
+const res=parseInt(document.getElementById("c-rs").value)
+const sw=src.videoWidth||src.naturalWidth
+const sh=src.videoHeight||src.naturalHeight
+const w=res
+const h=Math.round(res*(sh/sw)*1.25)
+buf.width=w;buf.height=h
+bCtx.drawImage(src,0,0,w,h)
+const pixels=bCtx.getImageData(0,0,w,h).data
+out.width=w*8;out.height=h*10
+oCtx.fillStyle="black";oCtx.fillRect(0,0,out.width,out.height)
+oCtx.font="10px monospace"
+for(let i=0;i<pixels.length;i+=4){const avg=(pixels[i]+pixels[i+1]+pixels[i+2])/3
+const char=lookup[avg|0]
+const x=((i/4)%w)*8
+const y=Math.floor((i/4)/w)*10
+oCtx.fillStyle=`rgb(${pixels[i]},${pixels[i+1]},${pixels[i+2]})`
+oCtx.fillText(char,x,y)}
 }
-
-function drawParticles(ctx) {
-    for (let i = 0; i < activeParticles; i++) {
-        let idx = i * 7;
-        ctx.globalAlpha = particles[idx + 4];
-        ctx.fillStyle = `rgb(${particles[idx + 5]}, ${particles[idx + 6]}, 255)`; 
-        ctx.fillRect(particles[idx], particles[idx + 1], 2, 2);
-    }
-    ctx.globalAlpha = 1;
-    const pCountElem = document.getElementById('particle-count');
-    if(pCountElem) pCountElem.innerText = `PARTÍCULAS ATIVAS: ${activeParticles}`;
-}
-
-const MAPS = {
-    classic: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ",
-    blocks: "█▓▒░ ",
-    hires: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
-};
-
-const btnParticles = document.getElementById('btn-particles');
-if(btnParticles) {
-    btnParticles.onclick = (e) => {
-        particlesEnabled = !particlesEnabled;
-        const btn = e.target;
-        if(particlesEnabled) {
-            btn.innerText = "✨ PARTÍCULAS: 30k MAX";
-            btn.style.background = "var(--purple)";
-            btn.style.color = "#000";
-        } else {
-            btn.innerText = "✨ PARTÍCULAS: OFF";
-            btn.style.background = "#111";
-            btn.style.color = "var(--purple)";
-            activeParticles = 0; 
-        }
-    };
-}
-
-async function setupAudioEngine() {
-    try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioGain = audioCtx.createGain();
-            audioDest = audioCtx.createMediaStreamDestination();
-            audioGain.connect(audioDest);
-            if(!isMuted) audioGain.connect(audioCtx.destination);
-        }
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
-        if (audioSource) try { audioSource.disconnect(); } catch(e) {}
-        if (v.srcObject) audioSource = audioCtx.createMediaStreamSource(v.srcObject);
-        else if (v.src) audioSource = audioCtx.createMediaElementSource(v);
-        if (audioSource) audioSource.connect(audioGain);
-    } catch (e) { console.warn("Audio Hook Warning:", e.message); }
-}
-
-function renderFrame() {
-    if(!isRunning) return;
-    const source = (currentMode === 'video' || currentMode === 'screen') ? v : img;
-    if(!source.videoWidth && !source.naturalWidth) {
-        requestAnimationFrame(renderFrame);
-        return;
-    }
-
-    const res = parseInt(document.getElementById('c-res').value);
-    const style = document.getElementById('c-style').value;
-    const br = document.getElementById('c-br').value;
-    const con = document.getElementById('c-con').value;
-    
-    const w = res;
-    const h = Math.round(res * ((source.videoHeight || source.naturalHeight) / (source.videoWidth || source.naturalWidth)) * 0.75);
-    
-    buf.width = w; buf.height = h;
-    bCtx.save();
-    if(isFlipped) { bCtx.translate(w,0); bCtx.scale(-1,1); }
-    bCtx.filter = `brightness(${br}) contrast(${con})`;
-    bCtx.drawImage(source, 0, 0, w, h);
-    bCtx.restore();
-    
-    const pixels = bCtx.getImageData(0, 0, w, h).data;
-    const charMap = isInverted ? MAPS[style].split("").reverse().join("") : MAPS[style];
-    
-    out.width = w * 8; out.height = h * 12;
-    oCtx.fillStyle = "#000";
-    oCtx.fillRect(0,0, out.width, out.height);
-    oCtx.font = "10px monospace";
-    
-    for(let i=0; i<pixels.length; i+=4) {
-        const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-        const brightness = (r*0.3 + g*0.59 + b*0.11);
-        const char = charMap[Math.floor((brightness/255) * (charMap.length - 1))];
-        const x = (i/4) % w;
-        const y = Math.floor((i/4) / w);
-        
-        const posX = x * 8;
-        const posY = y * 12;
-
-        oCtx.fillStyle = `rgb(${r},${g},${b})`;
-        oCtx.fillText(char, posX, posY);
-
-        if(particlesEnabled && brightness > 180 && Math.random() < 0.25) {
-            spawnParticle(posX, posY, r, g, b);
-        }
-    }
-
-    if(activeParticles > 0) {
-        updateParticles();
-        drawParticles(oCtx);
-    }
-    
-    const fps = parseInt(document.getElementById('c-fps').value);
-    setTimeout(() => requestAnimationFrame(renderFrame), 1000/fps);
-}
-
-document.getElementById('btn-init').onclick = async () => {
-    isRunning = true;
-    if(currentMode === 'video' || currentMode === 'screen') {
-        await setupAudioEngine();
-        v.play().catch(e => console.warn(e));
-    }
-    renderFrame();
-};
-
-document.getElementById('btn-mute').onclick = () => {
-    isMuted = !isMuted;
-    if(isMuted) {
-        audioGain?.disconnect(audioCtx?.destination);
-        document.getElementById('btn-mute').innerText = "🔇";
-    } else {
-        if(audioGain && audioCtx) audioGain.connect(audioCtx.destination);
-        document.getElementById('btn-mute').innerText = "🔊";
-    }
-};
-
-const volControl = document.getElementById('vol-control');
-if(volControl) {
-    volControl.oninput = (e) => {
-        const val = e.target.value;
-        const volValElem = document.getElementById('val-vol');
-        if(volValElem) volValElem.innerText = Math.round(val * 100) + "%";
-        if(audioGain) audioGain.gain.value = val;
-    };
-}
-
-document.getElementById('btn-gh').onclick = () => window.open("https://github.com/PaneDeveloper/ASCII_Render/upload/main/Arquivos_Render", '_blank');
-
-document.getElementById('btn-screen').onclick = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-        v.srcObject = stream;
-        currentMode = 'screen';
-        v.style.display = 'block'; img.style.display = 'none';
-        document.getElementById('file-info').innerText = "MODO: CAPTURA DE TELA";
-        await setupAudioEngine();
-    } catch (e) { console.error(e); }
-};
-
-function loadFile(url, isVideo, name) {
-    document.getElementById('file-info').innerText = name.toUpperCase();
-    v.srcObject = null;
-    if(isVideo) { 
-        v.src = url; v.style.display = 'block'; img.style.display = 'none'; 
-        currentMode = 'video'; v.load(); 
-    } else { 
-        img.src = url; img.style.display = 'block'; v.style.display = 'none'; 
-        currentMode = 'image'; 
-    }
-    toggleGallery(false);
-}
-
-function toggleGallery(show) { 
-    const modal = document.getElementById('gallery-modal');
-    if(modal) modal.style.display = show ? 'flex' : 'none'; 
-}
-document.getElementById('btn-gallery').onclick = () => toggleGallery(true);
-
-document.getElementById('local-file').onchange = (e) => {
-    const file = e.target.files[0];
-    if(file) loadFile(URL.createObjectURL(file), file.type.startsWith('video'), file.name);
-};
-
-document.getElementById('btn-flip').onclick = (e) => { isFlipped = !isFlipped; e.target.classList.toggle('btn-active'); };
-document.getElementById('btn-invert').onclick = (e) => { isInverted = !isInverted; e.target.classList.toggle('btn-active'); };
-
-v.ontimeupdate = () => {
-    const prog = (v.currentTime / v.duration) * 100;
-    const progElem = document.getElementById('video-progress');
-    const timeElem = document.getElementById('time-display');
-    if(progElem) progElem.value = prog || 0;
-    if(timeElem) timeElem.innerText = `${formatTime(v.currentTime)} / ${formatTime(v.duration)}`;
-};
-
-function formatTime(s) {
-    if(isNaN(s)) return "00:00";
-    const m = Math.floor(s/60), rs = Math.floor(s%60);
-    return `${m.toString().padStart(2,'0')}:${rs.toString().padStart(2,'0')}`;
-}
-
-document.getElementById('btn-play-pause').onclick = () => v.paused ? v.play() : v.pause();
-
-document.getElementById('btn-rec').onclick = async () => {
-    if(recorder && recorder.state === "recording") {
-        recorder.stop();
-        document.getElementById('btn-rec').innerText = "⏺ GRAVAR";
-        document.getElementById('btn-rec').classList.remove('btn-rec-active');
-    } else {
-        await setupAudioEngine();
-        chunks = [];
-        const stream = out.captureStream(30);
-        if(audioDest && audioDest.stream.getAudioTracks().length > 0) {
-            stream.addTrack(audioDest.stream.getAudioTracks()[0]);
-        }
-        recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        recorder.ondataavailable = (e) => chunks.push(e.data);
-        recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `ascii_particles_${Date.now()}.webm`; a.click();
-        };
-        recorder.start();
-        document.getElementById('btn-rec').innerText = "⏹ PARAR";
-        document.getElementById('btn-rec').classList.add('btn-rec-active');
-    }
-};
-
-document.getElementById('btn-snap').onclick = () => {
-    const a = document.createElement('a'); a.href = out.toDataURL(); a.download = 'ascii_snap.png'; a.click();
-};
-
+let lastTick=0
+function loop(t){if(!isRunning)return
+const fps=parseInt(document.getElementById("c-fps").value)
+if(t-lastTick>1000/fps){draw();lastTick=t}
+requestAnimationFrame(loop)}
+document.getElementById("btn-init").onclick=()=>{unlockAudio();isRunning=true
+ document.querySelectorAll(".media-layer").forEach(l=>l.style.display="flex")
+ v.muted=false;v.play();requestAnimationFrame(loop)}
+document.getElementById("f-selector").onchange=e=>{const file=e.target.files[0];if(!file)return
+const url=URL.createObjectURL(file)
+if(file.type.startsWith("video")){currentMode="video";v.src=url;v.style.display="block";img.style.display="none"}
+else{currentMode="image";img.src=url;img.style.display="block";v.style.display="none"}
+document.getElementById("btn-init").disabled=false}
+document.getElementById("c-rs").oninput=e=>{document.getElementById("s-rs").innerText=e.target.value}
+document.getElementById("c-fps").oninput=e=>{document.getElementById("s-fps").innerText=e.target.value}
+buildLookup()
+/* CORREÇÃO: qualquer clique ativa áudio */
+document.addEventListener("click",unlockAudio,{once:true})
 </script>
 </body>
 </html>
