@@ -1,118 +1,689 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASCII Gen V5.5 - TV Projects Hybrid</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<style>
-:root{--green:#00ff41;--bg:#050505;--panel:#111;--danger:#ff3e3e;--blue:#00a2ff;--warning:#ffcc00}
-body{background:var(--bg);color:var(--green);font-family:Courier New,monospace;margin:0;display:flex;height:100vh;overflow:hidden;user-select:none}
-.viewport{display:flex;flex:1;padding:15px;gap:15px}
-.pane{flex:1;background:black;border:2px solid #222;display:flex;justify-content:center;align-items:center;position:relative}
-.pane label{position:absolute;top:10px;left:10px;font-size:10px;border:1px solid var(--green);padding:4px 8px;background:black}
-.media-layer{display:none;width:100%;height:100%;justify-content:center;align-items:center}
-canvas{max-width:100%;max-height:100%;image-rendering:pixelated}
-.placeholder{color:#222;font-size:24px;font-weight:bold}
-.sidebar{width:360px;background:var(--panel);padding:20px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
-.btn{background:#111;border:1px solid var(--green);color:var(--green);padding:8px;cursor:pointer;font-size:11px}
-.btn:hover{background:var(--green);color:black}
-.control-group{display:flex;flex-direction:column;gap:3px}
-label{font-size:9px;color:#777}
-.stat-val{float:right;color:var(--green)}
-</style>
+    <meta charset="UTF-8">
+    <title>Motor de Renderização ASCII v5.7.0 | Portable Edition</title>
+    <style>
+        :root {
+            --green: #00ff41;
+            --bg: #050505;
+            --panel: #111;
+            --danger: #ff3e3e;
+            --blue: #00a2ff;
+            --orange: #ff8c00;
+            --disabled: #222;
+            --pane-bg: #000;
+            --border: #1a1a1a;
+            --accent: #00ff41;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--green);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* VIEWPORT */
+        .viewport {
+            flex: 1;
+            display: flex;
+            padding: 15px;
+            gap: 15px;
+            background: radial-gradient(circle at center, #0e0e0e 0%, #000 100%);
+            position: relative;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--pane-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        .pane label {
+            position: absolute;
+            top: 15px; left: 15px;
+            font-size: 8px;
+            background: var(--accent);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            z-index: 100;
+            text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;
+        }
+
+        canvas {
+            max-width: 100%; max-height: 100%;
+            image-rendering: pixelated;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 380px;
+            background: var(--panel);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-left: 2px solid #222;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 10px;
+            border: 1px solid #222;
+            background: #080808;
+        }
+
+        label { font-size: 9px; color: #666; font-weight: bold; letter-spacing: 1px; }
+        .stat-val { color: var(--green); float: right; }
+
+        .btn {
+            background: #151515;
+            border: 1px solid var(--green);
+            color: var(--green);
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) { background: var(--green); color: #000; box-shadow: 0 0 10px var(--green); }
+        .btn:disabled { border-color: var(--disabled); color: var(--disabled); cursor: not-allowed; opacity: 0.5; }
+        
+        .btn-infra { border-color: var(--blue); color: var(--blue); }
+        .btn-infra.server-active { border-color: var(--orange); color: var(--orange); }
+        .btn-infra.locked { border-color: var(--danger); color: var(--danger); }
+
+        .btn-start { background: #002b00; height: 50px; border-width: 2px; font-size: 12px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        input[type="range"] { width: 100%; accent-color: var(--green); cursor: pointer; margin: 5px 0; }
+
+        /* --- SISTEMA DE TEMAS --- */
+        .theme-toggle-btn {
+            position: fixed;
+            bottom: 20px; right: 20px;
+            width: 45px; height: 45px;
+            z-index: 2001;
+            background: var(--panel);
+            border: 2px solid var(--green);
+            color: var(--green);
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .theme-toggle-btn:hover { transform: scale(1.1); box-shadow: 0 0 15px var(--green); }
+
+        body.theme-light {
+            --bg: #f0f2f5;
+            --panel: #ffffff;
+            --pane-bg: #ffffff;
+            --border: #dcdcdc;
+            --green: #007a33; /* Verde mais escuro para leitura no fundo claro */
+            --accent: #007a33;
+            --blue: #0066cc;
+            --orange: #e67e00;
+            --disabled: #bdc3c7;
+        }
+        body.theme-light .viewport {
+            background: radial-gradient(circle at center, #ffffff 0%, #e0e0e0 100%);
+        }
+        body.theme-light .control-group { background: #f9f9f9; border-color: #ddd; }
+        body.theme-light .btn { background: #eee; border-color: #007a33; color: #007a33; }
+        body.theme-light .btn:hover:not(:disabled) { background: #007a33; color: #fff; box-shadow: 0 0 10px rgba(0,122,51,0.3); }
+        body.theme-light label { color: #888; }
+        body.theme-light #ph-1, body.theme-light #ph-2 { color: #ccc; }
+        body.theme-light .sidebar { border-left-color: #ddd; box-shadow: -5px 0 15px rgba(0,0,0,0.05); }
+        body.theme-light .stat-val { color: var(--green); }
+
+        /* MODAL DE ARQUIVOS CATEGORIZADO */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #0a0a0a; border: 1px solid var(--green);
+            width: 450px; max-height: 80vh; padding: 25px;
+            border-radius: 12px; display: flex; flex-direction: column;
+            border-color: var(--green);
+        }
+        .modal-scroll { overflow-y: auto; flex: 1; margin: 15px 0; }
+        .file-item {
+            padding: 10px; border-bottom: 1px solid #222; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px;
+        }
+        .file-item:hover { background: #111; color: var(--green); }
+        .cat-title { color: #555; font-size: 10px; margin-top: 15px; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 5px; }
+
+        #zoom-box {
+            position: absolute; top: 15px; right: 15px;
+            width: 180px; height: 180px;
+            border: 2px solid var(--blue);
+            background: #000; display: none; z-index: 200;
+        }
+
+        .warning-text { font-size: 8px; color: var(--danger); text-align: center; margin-top: 4px; display: none; }
+        #buffer { display: none; }
+
+        /* MODOS DE VISIBILIDADE */
+        .video-only, .image-only { display: none; }
+
+        /* MODO COMPACTO */
+        .compact-mode .sidebar { width: 250px; padding: 10px; gap: 8px; }
+        .compact-mode .viewport { padding: 5px; gap: 5px; }
+        .compact-mode .control-group { padding: 5px; }
+        .compact-mode .btn-start { height: 35px; font-size: 10px; }
+        .compact-mode .sidebar > div:not(.control-group):not(.grid-2):not(.infra-area) { display: none; }
+
+        /* --- RESPONSIVIDADE (MOBILE & WATCH) --- */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2001;
+            width: 45px;
+            height: 45px;
+            background: var(--panel);
+            border: 2px solid var(--green);
+            color: var(--green);
+            font-size: 22px;
+            cursor: pointer;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+
+        @media (max-width: 950px) {
+            .sidebar {
+                position: fixed;
+                right: -100%;
+                top: 0;
+                height: 100%;
+                width: 320px;
+                z-index: 2000;
+                transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-left: 2px solid var(--green);
+            }
+            .sidebar.active { right: 0; }
+            .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
+        .theme-toggle-btn {
+            top: 20px; bottom: auto;
+            right: 75px; /* Ao lado do botão de menu */
+        }
+        }
+
+        @media (max-width: 600px) {
+            .viewport { flex-direction: column-reverse; padding: 10px; gap: 10px; }
+            .pane:first-child { flex: 0.3; min-height: 120px; } /* Prévia original comprimida */
+            .sidebar { width: 85%; }
+        }
+
+        /* MODO RELÓGIO / TELAS ULTRA PEQUENAS */
+        @media (max-width: 300px) {
+            .pane:first-child { display: none; } /* Prioridade total ao que está sendo renderizado */
+            .pane label { display: none; }
+            .viewport { padding: 5px; }
+            .sidebar { width: 100%; }
+            #ph-2 { font-size: 10px; letter-spacing: 1px; }
+            .sidebar-toggle { width: 35px; height: 35px; font-size: 16px; top: 10px; right: 10px; }
+            .theme-toggle-btn { width: 35px; height: 35px; font-size: 16px; top: 10px; right: 55px; }
+        }
+
+        /* --- INDICADOR DE MODO LEVE --- */
+        #low-power-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 140, 0, 0.2);
+            color: var(--orange);
+            border: 1px solid var(--orange);
+            padding: 4px 10px;
+            font-size: 9px;
+            font-weight: 800;
+            border-radius: 4px;
+            z-index: 1000;
+            display: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.2);
+        }
+
+    </style>
 </head>
-<body onmousedown="unlockAudio()" ontouchstart="unlockAudio()">
-<div class="viewport">
-<div class="pane">
-<label>FONTE</label>
-<div class="media-layer" id="src-layer">
-<video id="v-core" playsinline loop muted></video>
-<img id="img-core">
-</div>
-<div class="placeholder">OFFLINE</div>
-</div>
-<div class="pane">
-<label>RENDER</label>
-<div class="media-layer">
-<canvas id="canvas-core"></canvas>
-</div>
-<div class="placeholder">PAUSADO</div>
-</div>
-</div>
-<div class="sidebar">
-<div id="audio-status">⚠️ ÁUDIO BLOQUEADO</div>
-<button class="btn" onclick="document.getElementById('f-selector').click()">Carregar Arquivo</button>
-<input type="file" id="f-selector" accept="video/*,image/*" style="display:none">
-<button class="btn" id="btn-init" disabled>▶ Iniciar</button>
-<div class="control-group">
-<label>Resolução <span class="stat-val" id="s-rs">100</span></label>
-<input type="range" id="c-rs" min="30" max="300" value="100">
-</div>
-<div class="control-group">
-<label>FPS <span class="stat-val" id="s-fps">30</span></label>
-<input type="range" id="c-fps" min="10" max="60" value="30">
-</div>
-</div>
-<canvas id="buffer"></canvas>
-<script>
-const v=document.getElementById("v-core")
-const img=document.getElementById("img-core")
-const out=document.getElementById("canvas-core")
-const oCtx=out.getContext("2d",{alpha:false})
-const buf=document.getElementById("buffer")
-const bCtx=buf.getContext("2d",{willReadFrequently:true})
-let audioCtx
-let audioGain
-let audioSource
-let isRunning=false
-let currentMode="idle"
-const MAP="$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. "
-let lookup=new Array(256)
-function unlockAudio(){
-if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();audioGain=audioCtx.createGain();audioGain.connect(audioCtx.destination)}
-if(audioCtx.state==="suspended"){audioCtx.resume()}
-document.getElementById("audio-status").innerText="🔊 ÁUDIO ATIVO"
-}
-function buildLookup(){for(let i=0;i<256;i++){lookup[i]=MAP[Math.floor((i/256)*MAP.length)]}}
-function draw(){const src=currentMode==="video"?v:img;if(!src.videoWidth&&!src.naturalWidth)return
-const res=parseInt(document.getElementById("c-rs").value)
-const sw=src.videoWidth||src.naturalWidth
-const sh=src.videoHeight||src.naturalHeight
-const w=res
-const h=Math.round(res*(sh/sw)*1.25)
-buf.width=w;buf.height=h
-bCtx.drawImage(src,0,0,w,h)
-const pixels=bCtx.getImageData(0,0,w,h).data
-out.width=w*8;out.height=h*10
-oCtx.fillStyle="black";oCtx.fillRect(0,0,out.width,out.height)
-oCtx.font="10px monospace"
-for(let i=0;i<pixels.length;i+=4){const avg=(pixels[i]+pixels[i+1]+pixels[i+2])/3
-const char=lookup[avg|0]
-const x=((i/4)%w)*8
-const y=Math.floor((i/4)/w)*10
-oCtx.fillStyle=`rgb(${pixels[i]},${pixels[i+1]},${pixels[i+2]})`
-oCtx.fillText(char,x,y)}
-}
-let lastTick=0
-function loop(t){if(!isRunning)return
-const fps=parseInt(document.getElementById("c-fps").value)
-if(t-lastTick>1000/fps){draw();lastTick=t}
-requestAnimationFrame(loop)}
-document.getElementById("btn-init").onclick=()=>{unlockAudio();isRunning=true
- document.querySelectorAll(".media-layer").forEach(l=>l.style.display="flex")
- v.muted=false;v.play();requestAnimationFrame(loop)}
-document.getElementById("f-selector").onchange=e=>{const file=e.target.files[0];if(!file)return
-const url=URL.createObjectURL(file)
-if(file.type.startsWith("video")){currentMode="video";v.src=url;v.style.display="block";img.style.display="none"}
-else{currentMode="image";img.src=url;img.style.display="block";v.style.display="none"}
-document.getElementById("btn-init").disabled=false}
-document.getElementById("c-rs").oninput=e=>{document.getElementById("s-rs").innerText=e.target.value}
-document.getElementById("c-fps").oninput=e=>{document.getElementById("s-fps").innerText=e.target.value}
-buildLookup()
-/* CORREÇÃO: qualquer clique ativa áudio */
-document.addEventListener("click",unlockAudio,{once:true})
+<body>
+    <button id="btn-theme-toggle" class="theme-toggle-btn" title="Alternar Tema">🌙</button>
+    <button id="btn-menu" class="sidebar-toggle">☰</button>
+
+    <div class="viewport">
+        <div class="pane">
+            <label>Prévia Normal</label>
+            <video id="v" playsinline style="display:none; width:100%; height:100%; object-fit:contain;"></video>
+            <img id="img" style="display:none; width:100%; height:100%; object-fit:contain;">
+            <div id="ph-1" style="color:var(--border); font-size: 18px; font-weight: 900; letter-spacing: 5px; text-transform: uppercase; text-align: center;">Carregar<br>Mídia</div>
+        </div>
+        <div class="pane">
+            <label>Renderização ASCII</label>
+            <div id="zoom-box"><canvas id="zoom-cv"></canvas></div>
+            <div id="low-power-badge">⚠️ Modo Leve Ativo</div>
+            <canvas id="out"></canvas>
+            <div id="ph-2" style="color:var(--border); font-size: 18px; font-weight: 900; letter-spacing: 5px; text-transform: uppercase; position: absolute;">Ascii Aqui</div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="grid-2">
+            <button class="btn" onclick="document.getElementById('f').click()">📂 CARREGAR</button>
+            <button class="btn" id="btn-screen" style="border-color:var(--blue); color:var(--blue);">🖥️ TELA</button>
+            <button class="btn" id="btn-webcam" style="border-color:var(--orange); color:var(--orange);">📹 WEBCAM</button>
+            <button class="btn" id="btn-files" style="border-color:var(--green); color:var(--green);">📁 GALERIA</button>
+        </div>
+
+        <button class="btn btn-start" id="btn-init" disabled>Executar</button>
+
+        <div class="control-group video-only">
+            <label>Progresso & Áudio <span class="stat-val" id="time">00:00</span></label>
+            <input type="range" id="c-seek" min="0" value="0" step="0.1" style="accent-color:var(--blue); margin-bottom: 10px;">
+            <input type="range" id="c-vol" min="0" max="1" step="0.1" value="1">
+            <div class="grid-2">
+                <button class="btn" id="btn-play">▶ Play/Pause</button>
+                <button class="btn" id="btn-upload" style="border-color:var(--orange); color:var(--orange);">💾 SALVAR GALERIA</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Estilo de Renderização <span class="stat-val" id="s-style">CLÁSSICO</span></label>
+            <select id="c-style" class="btn">
+                <option value="classic">Motor: ASCII Clássico</option>
+                <option value="hires">Motor: Alta Resolução</option>
+                <option value="blocks">Motor: Blocos Sólidos</option>
+                <option value="particles">Motor: Partículas</option>
+                <option value="binary">Motor: Binários</option>
+            </select>
+        </div>
+
+        <div class="grid-2">
+            <div class="control-group">
+                <label>Brilho <span class="stat-val" id="s-br">1.1</span></label>
+                <input type="range" id="c-br" min="0.5" max="3" step="0.1" value="1.1">
+            </div>
+            <div class="control-group">
+                <label>Contraste <span class="stat-val" id="s-con">1.0</span></label>
+                <input type="range" id="c-con" min="0.5" max="2" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="control-group">
+                <label>Cor/Sat <span class="stat-val" id="s-sat">1.0</span></label>
+                <input type="range" id="c-sat" min="0" max="2" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>Matiz (Hue) <span class="stat-val" id="s-hue">0°</span></label>
+                <input type="range" id="c-hue" min="0" max="360" value="0">
+            </div>
+        </div>
+
+        <button class="btn" id="btn-auto-adjust" style="border-color:var(--blue); color:var(--blue);">✨ AUTO AJUSTAR</button>
+
+        <div class="control-group">
+            <label>Densidade ASCII <span class="stat-val" id="s-rs">120</span></label>
+            <input type="range" id="c-rs" min="40" max="500" value="120">
+        </div>
+
+        <div class="grid-2">
+            <button class="btn" id="btn-flip">↔ Espelhar</button>
+            <button class="btn" id="btn-inv">Inverter P&B</button>
+            <button class="btn" id="btn-negative">Negativo</button>
+            <button class="btn" id="btn-mono">Mono</button>
+            <button class="btn" id="btn-orig">Cores</button>
+        </div>
+
+        <div class="grid-2">
+            <button class="btn image-only" id="btn-dl-img" style="border-color:var(--blue); color:var(--blue);">Baixar</button>
+            <button class="btn video-only" id="btn-dl-vid" style="border-color:var(--danger); color:var(--danger);">Baixar</button>
+            <button class="btn" id="btn-hw-info">ℹ️ INFO HW</button>
+            <button class="btn" id="btn-reset" style="border-color:var(--danger); color:var(--danger);">🔄 RESET</button>
+        </div>
+
+        <div style="font-size: 8px; text-align: center; color: #333; margin-top: auto; border-top: 1px solid #222; padding-top: 10px;">
+            SoberEngine v5.7.0 | PORTABLE WEB ENGINE
+        </div>
+    </div>
+
+    <input type="file" id="f" style="display:none" accept="video/*,image/*">
+    <canvas id="buffer"></canvas>
+
+<script type="module">
+    import { getHardwareSpecs, MAPS, saveToLocalGallery, getBatteryManager } from './engine.js';
+
+    const v = document.getElementById('v'), img = document.getElementById('img');
+    const out = document.getElementById('out'), oCtx = out.getContext('2d', {alpha: false});
+    const buf = document.getElementById('buffer'), bCtx = buf.getContext('2d', {alpha: false});
+    const zoomCv = document.getElementById('zoom-cv'), zCtx = zoomCv.getContext('2d');
+
+    let isRunning = false, mode = 'idle', originalExt = 'png', isNegative = false, isLowPowerMode = false;
+    let isFlipped = false, isInverted = false, useOriginalColor = true;
+    let zoomActive = false, zX = 0, zY = 0;
+    let lastRender = 0, table = [], recorder = null, recordedChunks = [];
+
+    function buildTable() {
+        let m = MAPS[document.getElementById('c-style').value] || MAPS.classic;
+        if (isInverted) m = m.split("").reverse().join("");
+        table = Array.from({length: 256}, (_, i) => m[Math.floor((i/256)*m.length)] || " ");
+    }
+
+    async function render() {
+        if(!isRunning) return;
+        const now = performance.now();
+        const frameDelay = isLowPowerMode ? 100 : 30;
+        if (now - lastRender < frameDelay) return requestAnimationFrame(render);
+        lastRender = now;
+
+        const src = (mode === 'img') ? img : v;
+        const sW = src.videoWidth || src.naturalWidth, sH = src.videoHeight || src.naturalHeight;
+        if(!sW) return requestAnimationFrame(render);
+
+        const res = parseInt(document.getElementById('c-rs').value);
+        const br = document.getElementById('c-br').value;
+        const style = document.getElementById('c-style').value;
+        
+        document.getElementById('ph-2').style.display = 'none';
+
+        buf.width = res; buf.height = Math.round(res * (sH/sW) * 0.5); 
+        bCtx.save();
+        if(isFlipped) { bCtx.translate(buf.width, 0); bCtx.scale(-1, 1); }
+        bCtx.drawImage(src, 0, 0, buf.width, buf.height);
+        bCtx.restore();
+
+        const pix = bCtx.getImageData(0, 0, buf.width, buf.height).data;
+        out.width = buf.width * 8; out.height = buf.height * 10;
+        oCtx.fillStyle = "#000"; oCtx.fillRect(0,0,out.width,out.height);
+        oCtx.font = "bold 10px monospace"; oCtx.textBaseline = "top";
+
+        for (let i = 0; i < pix.length; i += 4) {
+            let r = pix[i], g = pix[i+1], b = pix[i+2];
+            if (isNegative) { r = 255 - r; g = 255 - g; b = 255 - b; }
+            const avg = (r + g + b) / 3;
+            const x = (i / 4) % buf.width, y = Math.floor((i / 4) / buf.width);
+
+            if (useOriginalColor) oCtx.fillStyle = `rgb(${r},${g},${b})`;
+            else oCtx.fillStyle = '#00ff41';
+
+            if (style === 'particles') {
+                if(avg < 30) continue;
+                oCtx.beginPath(); oCtx.arc(x*8+4, y*10+5, (avg/255)*4.5, 0, Math.PI*2); oCtx.fill();
+            } else {
+                oCtx.fillText(table[Math.min(255, Math.floor(avg))] || " ", x*8, y*10);
+            }
+        }
+
+        requestAnimationFrame(render);
+    }
+
+    // --- EVENTOS DE INTERFACE ---
+    document.getElementById('btn-negative').onclick = () => isNegative = !isNegative;
+
+    document.getElementById('f').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        isRunning = false;
+        const isVid = file.type.includes('video');
+        if(isVid) { mode = 'vid'; v.src = url; v.style.display = 'block'; img.style.display = 'none'; }
+        else { mode = 'img'; img.src = url; img.style.display = 'block'; v.style.display = 'none'; }
+        
+        document.querySelectorAll('.video-only').forEach(el => el.style.display = isVid ? 'flex' : 'none');
+        document.querySelectorAll('.image-only').forEach(el => el.style.display = isVid ? 'none' : 'flex');
+        document.getElementById('btn-init').disabled = false;
+        document.getElementById('ph-1').style.display = 'none';
+    };
+
+    document.getElementById('btn-init').onclick = () => { isRunning = true; if(mode === 'vid') v.play(); render(); };
+    document.getElementById('btn-play').onclick = () => v.paused ? v.play() : v.pause();
+    document.getElementById('btn-flip').onclick = () => isFlipped = !isFlipped;
+    document.getElementById('btn-inv').onclick = () => { isInverted = !isInverted; buildTable(); };
+    document.getElementById('c-style').onchange = (e) => { buildTable(); document.getElementById('s-style').innerText = e.target.value.toUpperCase(); };
+    document.getElementById('btn-mono').onclick = () => useOriginalColor = false;
+    document.getElementById('btn-orig').onclick = () => useOriginalColor = true;
+    
+    document.getElementById('btn-hw-info').onclick = () => alert("RELATÓRIO DE HARDWARE:\n" + getHardwareSpecs().fullString);
+    
+    document.getElementById('btn-upload').onclick = () => {
+        const file = document.getElementById('f').files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                saveToLocalGallery(file, e.target.result);
+                alert("Salvo na Galeria Local!");
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    document.getElementById('btn-files').onclick = () => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-content">
+                <div style="color:var(--green)">📁 GALERIA LOCAL (Sessão)</div>
+                <div class="modal-scroll">
+                    ${window.LOCAL_STORAGE_FILES.map((f, i) => `
+                        <div class="file-item" id="file-${i}">
+                            <span>${f.name}</span>
+                            <span style="color:var(--blue)">${f.type.toUpperCase()}</span>
+                        </div>
+                    `).join('') || '<div style="color:#444; padding:20px">Galeria vazia...</div>'}
+                </div>
+                <button class="btn" onclick="this.closest('.modal-overlay').remove()">FECHAR</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    };
+
+    document.getElementById('btn-screen').onclick = async () => {
+        v.srcObject = await navigator.mediaDevices.getDisplayMedia({video: true});
+        mode = 'vid'; v.style.display = 'block'; img.style.display = 'none';
+        document.getElementById('btn-init').disabled = false;
+    };
+
+    document.getElementById('btn-webcam').onclick = async () => {
+        v.srcObject = await navigator.mediaDevices.getUserMedia({video: true});
+        mode = 'vid'; v.style.display = 'block'; img.style.display = 'none';
+        document.getElementById('btn-init').disabled = false;
+    };
+
+    // --- DOWNLOAD DE VÍDEO (MediaRecorder) ---
+    document.getElementById('btn-dl-vid').onclick = () => {
+        if (!recorder || recorder.state === 'inactive') {
+            recordedChunks = [];
+            const stream = out.captureStream(30);
+            recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            recorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `ascii_render_${Date.now()}.webm`;
+                a.click();
+            };
+            recorder.start();
+            document.getElementById('btn-dl-vid').innerText = '⏹ PARAR';
+        } else {
+            recorder.stop();
+            document.getElementById('btn-dl-vid').innerText = 'Baixar';
+        }
+    };
+
+    document.getElementById('btn-dl-img').onclick = () => {
+        const a = document.createElement('a');
+        a.href = out.toDataURL('image/png');
+        a.download = `captura_ascii_${Date.now()}.png`;
+        a.click();
+    };
+
+    // --- SAUDAÇÃO PANE DEVELOPER ---
+    function showPaneGreeting() {
+        const hour = new Date().getHours();
+        let greet = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+        const ua = navigator.userAgent;
+        let device = "um PC";
+        if (/smart-tv|googletv|appletv|hbbtv|netcast|viera/i.test(ua)) device = "uma TV";
+        else if (/Watch/i.test(ua)) device = "um Relógio";
+        else if (/tablet|ipad/i.test(ua)) device = "um Tablet";
+        else if (/mobile|android|iphone/i.test(ua)) device = "um Telefone";
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-content" style="border-color:var(--blue); width: 500px; max-height: 90vh;">
+                <div style="font-weight:bold; margin-bottom:15px; color:var(--blue); text-align:center; font-size: 16px;">👋 BOAS-VINDAS & POLÍTICA DE PRIVACIDADE</div>
+                
+                <div id="policy-container" style="font-size:12px; line-height:1.6; color:#ccc; text-align:left; overflow-y: scroll; max-height: 300px; padding: 15px; background: #000; border: 1px solid #222; margin-bottom: 15px;">
+                    <p><strong>${greet}, Caro(a) usuário(a).</strong></p>
+                    <p>Eu, <strong>Pane Developer</strong>, e meus colegas, desenvolvemos este software especificamente para rodar em <strong>PC</strong>s. Detectamos que você está acessando de <strong>${device}</strong>.</p>
+                    <p style="color:var(--blue); font-size: 10px; margin-top: -10px;">[ INFO HW ]: ${specs.fullString}</p>
+                    <hr style="border: 0; border-top: 1px solid #222; margin: 15px 0;">
+                    <p><strong>POLÍTICA DE PRIVACIDADE (LEIA ATÉ O FIM PARA ENTRAR):</strong></p>
+                    <p>1. <strong>Processamento Local:</strong> Toda a renderização ASCII é feita exclusivamente no seu dispositivo. O código que antes dependia de Node.js foi portado para JavaScript puro de navegador.</p>
+                    <p>2. <strong>Dados de Mídia:</strong> Suas fotos, vídeos e capturas de tela <strong>não saem do seu computador</strong>. Não há upload para servidores externos; o processamento ocorre via CPU/GPU local.</p>
+                    <p>3. <strong>LGPD:</strong> Em conformidade com a Lei Geral de Proteção de Dados, garantimos que nenhuma informação pessoal ou biométrica é coletada ou armazenada de forma persistente em nossos servidores, já que o backend foi removido.</p>
+                    <p>4. <strong>Hardware:</strong> O uso intenso de processamento pode aquecer dispositivos móveis ou TVs. Ao prosseguir, você entende os requisitos de hardware.</p>
+                    <p>5. <strong>Cookies:</strong> Utilizamos apenas o armazenamento local (LocalStorage) para salvar suas preferências de tema e galeria temporária durante a sessão.</p>
+                    <p><em>Role até o final para confirmar que você leu e concorda com os termos de uso da plataforma.</em></p>
+                    <div style="height: 20px;"></div>
+                    <p style="text-align: center; color: var(--green);">--- FIM DA POLÍTICA ---</p>
+                </div>
+
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 11px; margin-bottom: 15px; color: #888; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="policy-check"> Li e aceito os termos e condições
+                </label>
+
+                <div class="grid-2">
+                    <button class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="window.location.href='about:blank'">SAIR DA PLATAFORMA</button>
+                    <button id="btn-enter-platform" class="btn" style="border-color:var(--disabled); color:var(--disabled);" disabled>ENTRAR NA PLATAFORMA</button>
+                </div>
+            </div>`;
+            
+        document.body.appendChild(overlay);
+
+        const container = overlay.querySelector('#policy-container');
+        const enterBtn = overlay.querySelector('#btn-enter-platform');
+        const check = overlay.querySelector('#policy-check');
+
+        let isBottom = false;
+        const validate = () => {
+            if (isBottom && check.checked) {
+                enterBtn.disabled = false;
+                enterBtn.style.borderColor = 'var(--green)';
+                enterBtn.style.color = 'var(--green)';
+            } else {
+                enterBtn.disabled = true;
+                enterBtn.style.borderColor = 'var(--disabled)';
+                enterBtn.style.color = 'var(--disabled)';
+            }
+        };
+
+        container.addEventListener('scroll', () => {
+            if (container.scrollHeight - container.scrollTop <= container.clientHeight + 10) {
+                isBottom = true;
+                validate();
+            }
+        });
+        check.addEventListener('change', validate);
+
+        enterBtn.onclick = () => {
+            localStorage.setItem('ascii-policy-accepted', 'true');
+            overlay.remove();
+        };
+    }
+
+    window.onload = () => {
+        buildTable();
+        if (localStorage.getItem('ascii-policy-accepted') !== 'true') {
+            showPaneGreeting();
+        }
+
+        const specs = getHardwareSpecs();
+
+        // Sistema de Bateria (Modo Leve para Dispositivos Móveis/TVs)
+        const initBatteryMode = async () => {
+            if (specs.device === "PC") return;
+            const battery = await getBatteryManager();
+            if (!battery) return;
+            
+            const badge = document.getElementById('low-power-badge');
+            const toggleUI = (on) => {
+                badge.style.display = on ? 'block' : 'none';
+            };
+
+            const updateMode = () => {
+                if (battery.level <= 0.3 && !battery.charging) {
+                    if (!isLowPowerMode) {
+                        isLowPowerMode = true;
+                        const rs = document.getElementById('c-rs');
+                        rs.value = Math.min(rs.value, 60);
+                        rs.dispatchEvent(new Event('input'));
+                        console.warn(`[SYSTEM] Bateria Baixa (${(battery.level * 100).toFixed(0)}%): Modo Leve Ativado.`);
+                        toggleUI(true);
+                    }
+                } else {
+                    isLowPowerMode = false;
+                    if (specs.device !== "Relógio") toggleUI(false);
+                }
+            };
+
+            battery.addEventListener('levelchange', updateMode);
+            battery.addEventListener('chargingchange', updateMode);
+            updateMode();
+        };
+        initBatteryMode();
+
+        // Configuração Automática para Relógios (Watch Support)
+        if (specs.device === "Relógio") {
+            isLowPowerMode = true; // No relógio é sempre modo leve kkk
+            const rsInput = document.getElementById('c-rs');
+            rsInput.value = 40; // Trava a densidade para não fritar o hardware
+            rsInput.dispatchEvent(new Event('input'));
+            document.getElementById('low-power-badge').style.display = 'block';
+            console.warn("[SYSTEM] Modo Relógio Ativado: Densidade limitada para estabilidade.");
+        }
+    };
+
+    // Temas e Menus (Portados do original)
+    document.getElementById('btn-menu').onclick = () => document.querySelector('.sidebar').classList.toggle('active');
+    document.getElementById('btn-theme-toggle').onclick = () => document.body.classList.toggle('theme-light');
+    
+    // Sincronia de Sliders
+    document.getElementById('c-br').oninput = (e) => document.getElementById('s-br').innerText = e.target.value;
+    document.getElementById('c-rs').oninput = (e) => document.getElementById('s-rs').innerText = e.target.value;
+    document.getElementById('c-seek').oninput = (e) => v.currentTime = e.target.value;
+    v.ontimeupdate = () => document.getElementById('c-seek').value = v.currentTime;
+
 </script>
 </body>
 </html>
